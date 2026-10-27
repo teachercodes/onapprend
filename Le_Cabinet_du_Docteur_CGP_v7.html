@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Le Cabinet du Docteur</title>
+<style>
+:root{--bg:#f2f7f6;--card:#fff;--tx:#14302f;--mu:#587270;--pr:#0b7a75;--on:#fff;--ok:#1d8a4b;--okb:#dcf4e5;--bad:#c4392b;--badb:#fbe2de;--bd:#cfe0de;--hl:#fff0a8;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1a1a;--card:#162a29;--tx:#e4f1ef;--mu:#9ab8b5;--pr:#4fc9c0;--on:#05211f;--ok:#5fd18a;--okb:#16372a;--bad:#ff8a7a;--badb:#442522;--bd:#2b4745;--hl:#5a4d12}}
+:root[data-theme="dark"]{--bg:#0d1a1a;--card:#162a29;--tx:#e4f1ef;--mu:#9ab8b5;--pr:#4fc9c0;--on:#05211f;--ok:#5fd18a;--okb:#16372a;--bad:#ff8a7a;--badb:#442522;--bd:#2b4745;--hl:#5a4d12}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+h1,h2{font-family:Georgia,"Times New Roman",serif;margin:.2em 0}
+.top{display:flex;justify-content:space-between;padding:12px 16px;background:var(--pr);color:var(--on);font-weight:600}
+main{max-width:720px;margin:0 auto;padding:12px 16px 32px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin:12px 0}
+button.card{display:block;width:100%;text-align:left;color:var(--tx)}
+button{font:inherit;cursor:pointer;border:1.5px solid var(--bd);background:var(--card);color:var(--tx);border-radius:10px;padding:10px 14px;text-align:left}
+button:disabled{cursor:default;opacity:.55}.ok,.bad{opacity:1!important}
+.pri{background:var(--pr);color:var(--on);border-color:var(--pr);font-weight:600;text-align:center}
+.opts{display:grid;gap:8px}.cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ok{background:var(--okb)!important;border-color:var(--ok)!important}.bad{background:var(--badb)!important;border-color:var(--bad)!important}
+.sel{outline:3px solid var(--pr)}
+.fc{min-height:78px;border-left:5px solid var(--pr)}.fc.on{background:var(--hl);border-left-color:var(--ok)}
+.txt p{margin:.3em 0;padding:4px 8px;border-radius:8px}.txt p.hl{background:var(--hl)}.txt p.good{background:var(--okb)}
+.trap{border-left:5px solid var(--bad)}
+input,textarea{font:inherit;width:100%;box-sizing:border-box;padding:10px;border-radius:10px;border:1.5px solid var(--bd);background:var(--card);color:var(--tx);margin:6px 0}
+.bar{height:8px;background:var(--bd);border-radius:6px}.bar i{display:block;height:100%;background:var(--pr);border-radius:6px}
+.mu{color:var(--mu);font-size:.9em}a{color:var(--pr);font-weight:600}
+</style></head><body>
+<div class="top"><span>🩺 Le Cabinet du Docteur</span><span id="xp"></span></div>
+<main id="app"></main>
+<script>
+// ENSEIGNANT : écris ton e-mail et change le mot secret.
+// ⚠️ Verrou de classe uniquement : un élève qui lit le code source peut trouver SECRET.
+// Pour un vrai suivi, utilise un stockage partagé / un tableau de bord enseignant.
+const TEACHER="prapti.vyas@adaniinternational.edu.in",SECRET="clinique",UNLOCK="RUST"; // UNLOCK = code unique du prof, valable pour tous les niveaux
+const TEACHER_HASH=""; // empreinte SHA-256 de TON mot de passe prof : ouvre la page avec #prof pour la générer
+let PV=false;try{PV=sessionStorage.getItem("pv")=="1"}catch(e){}
+const LK=i=>!PV&&i>S.open;
+const sha=async s=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s)))].map(b=>b.toString(16).padStart(2,"0")).join("");
+const $=s=>document.querySelector(s),app=$("#app");
+const sh=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const H=s=>{let x=5381;for(const c of s)x=((x<<5)+x+c.charCodeAt(0))>>>0;return x.toString(36).toUpperCase().slice(-5)};
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let S={name:"",cls:"",open:0,xp:0,sc:{},ls:{}},cur={};
+try{Object.assign(S,JSON.parse(localStorage.getItem("cd2")||"{}"))}catch(e){}
+const sv=()=>{try{localStorage.setItem("cd2",JSON.stringify(S))}catch(e){}};
+const show=h=>{app.innerHTML=h;window.scrollTo(0,0);$("#xp").textContent="⭐ "+S.xp+" XP"};
+const fl=(a,b)=>[a,b];
+const E={A:"n’est pas aussi bon pour la santé que prendre les escaliers.",B:"près d’une salle de gym mais est très active tout de même.",C:"un bon régime alimentaire.",D:"vous ne devez pas faire si vous voulez être en forme.",E:"peuvent faire beaucoup de choses pour retrouver la forme.",F:"équilibré.",G:"ne bouge pas assez.",H:"vont pas au collège à pied.",I:"en très mauvaise santé.",J:"est mieux pour la santé que prendre l’ascenseur.",K:"mange sain."};
+const D=(q,a,o,p)=>[q,E[a],o.split("").map(k=>E[k]),"Relis le paragraphe surligné !",p];
+const body=[["🧠 la tête","à la"],["🦵 le genou","au"],["🤢 l’estomac","à l’"],["🏃 les jambes","aux"],["🔙 le dos","au"],["👀 les yeux","aux"],["💪 le bras","au"],["🗣️ la gorge","à la"],["🦶 le pied","au"],["🦷 les dents","aux"]];
+const L=[
+{ic:"🥵",t:"Les expressions avec avoir",d:"Comprends, puis pratique",
+r:"En anglais : « I <b>am</b> hungry ». En français : « J’<b>ai</b> faim » (I <b>have</b> hunger). Avec ces expressions, on utilise <b>avoir</b>, jamais être.<br><b>avoir</b> : j’ai · tu as · il/elle/on a · nous avons · vous avez · ils/elles ont<br><span style=\"color:var(--bad)\">✘ Je suis faim</span> → <span style=\"color:var(--ok)\">✔ J’ai faim</span>",
+c:[fl("🍔 avoir faim","to be hungry<br><i>J’ai faim.</i>"),fl("🥤 avoir soif","to be thirsty<br><i>Tu as soif ?</i>"),fl("🥵 avoir chaud","to be hot<br><i>Il a chaud en été.</i>"),fl("🥶 avoir froid","to be cold<br><i>Nous avons froid.</i>"),fl("😴 avoir sommeil","to be sleepy<br><i>Elle a sommeil.</i>"),fl("😱 avoir peur de","to be afraid of<br><i>Ils ont peur des araignées.</i>"),fl("🙈 avoir honte de","to be ashamed of<br><i>J’ai honte de mon erreur.</i>"),fl("✅ avoir raison","to be right<br><i>Tu as raison.</i>"),fl("❌ avoir tort","to be wrong<br><i>Vous avez tort.</i>"),fl("🍀 avoir de la chance","to be lucky<br><i>Elle a de la chance.</i>"),fl("🧘 avoir de la patience","to be patient<br><i>Il a de la patience.</i>"),fl("🎂 avoir … ans","to be … years old<br><i>J’ai 14 ans.</i>"),fl("🆘 avoir besoin de","to need<br><i>Nous avons besoin d’argent.</i>"),fl("💭 avoir envie de","to want / feel like<br><i>J’ai envie de dormir.</i>"),fl("🤩 avoir hâte de","to look forward to<br><i>J’ai hâte de partir.</i>"),fl("👀 avoir l’air (de)","to look (like)<br><i>Il a l’air content.</i>"),fl("🤝 avoir confiance en","to trust<br><i>J’ai confiance en toi.</i>"),fl("✨ avoir du charme","to have charm<br><i>Elle a du charme.</i>"),fl("🎯 avoir l’intention de","to intend to<br><i>J’ai l’intention de réussir.</i>"),fl("🤕 avoir mal à","to have a pain in…<br><i>J’ai mal à la tête.</i>")],
+it:[["🥵 Il fait 40 °C et tu transpires.","J’ai chaud",["J’ai froid","J’ai soif","J’ai honte"],"chaud = hot"],
+["🥶 Il neige et nous n’avons pas de manteau.","Nous avons froid",["Nous sommes froid","Nous avons chaud","Nous faisons froid"],"avoir + froid"],
+["🍔 « I’m hungry. »","J’ai faim",["Je suis faim","Je fais faim","J’ai la faim"],"avoir + faim, pas être !"],
+["🧮 Elle dit que 10 + 10 = 25. Elle…","a tort",["a raison","a chance","est tort"],"25 est faux"],
+["🧮 Tu dis que 4 × 7 = 28. Tu…","as raison",["as tort","as peur","es raison"],"28 est juste"],
+["🐍 Elles voient un serpent !","Elles ont peur",["Elles sont peur","Elles ont chaud","Elles ont tort"],"peur = fear"],
+["🎂 « He is 15 years old. »","Il a 15 ans",["Il est 15 ans","Il a 15 années","Il fait 15 ans"],"En français, on a un âge !"],
+["🏠 « We need money. »","Nous avons besoin d’argent",["Nous sommes besoin d’argent","Nous avons envie d’argent","Nous avons hâte d’argent"],"besoin = need"],
+["🎤 Le concert commence bientôt. Tu ne peux plus attendre !","J’ai hâte",["J’ai honte","J’ai tort","J’ai sommeil"],"hâte = can’t wait"],
+["😊 « He looks happy. »","Il a l’air content",["Il est l’air content","Il a de l’air content","Il fait l’air content"],"avoir l’air"]]},
+{ic:"🦵",t:"Avoir mal à + le corps",d:"au · à la · à l’ · aux",
+r:"On dit <b>avoir mal à</b> + partie du corps. Mais « à » change avec l’article : à + le = <b>au</b> · à + la = <b>à la</b> · à + l’ = <b>à l’</b> · à + les = <b>aux</b>.",
+c:body.map(([n,a])=>{const m=n.slice(n.indexOf(" ")+1).match(/^(la |le |les |l’)(.*)$/);return fl("<b>"+n+"</b>","à + "+m[1].trim()+" → <b>"+a+"</b><br><i>J’ai mal "+a+(a=="à l’"?"":" ")+m[2]+".</i>")}),
+it:[["Il a mal ___ tête.","à la",["au","à l’","aux"],"la tête → à la"],["J’ai mal ___ genou.","au",["à la","à l’","aux"],"le genou → au"],["Elle a mal ___ estomac.","à l’",["au","à la","aux"],"l’estomac → à l’"],["Tu as mal ___ jambes.","aux",["au","à la","à l’"],"les jambes → aux"],["Nous avons mal ___ dos.","au",["à la","à l’","aux"],"le dos → au"],["Il a mal ___ yeux.","aux",["au","à la","à l’"],"les yeux → aux"],["J’ai mal ___ bras.","au",["à la","à l’","aux"],"le bras → au"],["Elle a mal ___ gorge.","à la",["au","à l’","aux"],"la gorge → à la"]]},
+{ic:"⏳",t:"Depuis + présent",d:"Découvre la règle",
+r:"Retourne les cartes dans l’ordre. Chaque carte pose une question : réfléchis, puis découvre la réponse.",
+c:[fl("🤔 « Depuis quand avez-vous mal au genou ? — Depuis deux semaines. » Le genou fait encore mal aujourd’hui ?","Oui ! Le problème <b>continue</b> → on utilise le <b>présent</b> (avez, ai), pas le passé."),fl("🤔 « Je n’ai pas faim depuis deux jours. » Quel temps ?","Le <b>présent</b>, même au négatif.<br>English: “I haven’t been hungry for two days.”"),fl("⏱️ depuis <b>deux jours</b> · depuis <b>trois semaines</b>","Une <b>durée</b> (how long).<br>Question : Depuis combien de temps ?"),fl("📅 depuis <b>lundi</b> · depuis <b>hier</b> · depuis <b>le début de l’été</b>","Un <b>point de départ</b> (since when).<br>Question : Depuis quand ?"),fl("🏁 La règle : depuis + ?","<b>depuis + présent</b> = ça a commencé dans le passé et ça continue maintenant.")],
+it:[["“I have had a headache for two days.”","J’ai mal à la tête depuis deux jours.",["J’ai eu mal à la tête depuis deux jours.","J’ai mal à la tête il y a deux jours.","J’avais mal à la tête depuis deux jours."],"depuis + présent !"],["Depuis quand ___-vous mal au genou ?","avez",["êtes","faites","avoir"],"avoir → vous avez"],["Il est malade ___ le début de l’été.","depuis",["pendant","il y a","pour"],"Ça continue maintenant."],["Je n’ai pas faim ___ deux jours.","depuis",["il y a","en","dans"],"Ça continue maintenant."],["Elle (avoir) mal au dos depuis hier.","a",["avait","a eu","aura"],"depuis + présent"],["Laquelle est une durée ?","depuis trois semaines",["depuis lundi","depuis hier","depuis le début de l’été"],"Combien de temps ?"],["Laquelle est un point de départ ?","depuis lundi",["depuis deux jours","depuis trois semaines","depuis dix minutes"],"Depuis quand ?"]]},
+{ic:"🏃",t:"Vocabulaire : rester en forme",d:"Apprends, puis associe",
+r:"Le vocabulaire de « Êtes-vous en bonne forme ? ». Retourne toutes les cartes, puis relie le français et l’anglais.",
+p:[["être en forme","to be fit"],["la santé","health"],["être en mauvaise santé","to be in poor health"],["faire du sport","to do sport"],["bouger","to move"],["l’ascenseur","the lift"],["l’escalier roulant","the escalator"],["les escaliers","the stairs"],["à pied","on foot"],["à vélo","by bike"],["en voiture","by car"],["le centre commercial","the shopping centre"],["la salle de gym","the gym"],["un régime alimentaire","a diet"],["équilibré","balanced"],["un repas","a meal"],["le fastfood","fast food"],["les sucreries","sweets"],["paresseux","lazy"],["fatigant","tiring"],["l’énergie","energy"],["un copain","a friend"]]},
+{ic:"⚖️",t:"Quantités et négation",d:"trop de · très peu de · ne…jamais",
+r:"Les quantificateurs se suivent de <b>de</b> (ou d’ devant une voyelle). La négation entoure le verbe.",
+c:[fl("beaucoup de","a lot of"),fl("trop de","too much / too many"),fl("très peu de","very little / very few"),fl("tant de","so much / so many"),fl("assez de","enough"),fl("autant de … que","as much … as"),fl("ne … pas","not<br><i>Il ne mange pas équilibré.</i>"),fl("ne … jamais","never<br><i>Elle ne prend jamais l’ascenseur.</i>"),fl("ne … plus","no more / no longer<br><i>Il n’a plus d’énergie.</i>")],
+it:[["Maurice mange ___ fastfood. (too much)","trop de",["très peu de","pas de","autant de"]],["Il fait ___ exercice. (very little)","très peu d’",["trop d’","tant d’","beaucoup d’"]],["Sandra a ___ copains qui vont en voiture. (so many)","tant de",["très peu de","pas de","peu d’"]],["Sandra ne prend ___ l’ascenseur. (never)","jamais",["pas","plus","rien"]],["Il n’a ___ d’énergie. (no more)","plus",["jamais","rien","personne"]],["Sandra fait ___ sport que ses copains. (as much … as)","autant de",["tant que","trop de","très peu de"]]]},
+{ic:"🕵️",t:"Le dossier Sandra & Maurice",d:"Lis, enquête, associe",
+r:"Lis le dossier avec attention : toutes les réponses s’y trouvent. Ensuite, associe chaque début de phrase à sa fin. Attention, il y a des fins en trop ! Si tu te trompes, un paragraphe se surligne en jaune : relis-le.",c:[],
+tx:["<b>Êtes-vous en bonne forme ?</b> Les gens qui sont en mauvaise santé peuvent faire beaucoup de choses pour retrouver la forme. Mais il y a aussi beaucoup de choses que vous ne devez pas faire si vous voulez être en forme.","Sandra n’habite pas près d’une salle de gym, mais elle est très active tout de même : tennis, jogging, vélo. Beaucoup de ses copains ne vont pas au collège à pied : ils y vont en voiture ou en bus. Sandra, elle, y va à pied ou à vélo.","Elle prend toujours les escaliers, jamais l’ascenseur : c’est mieux pour la santé. Sandra a un bon régime alimentaire : trois repas équilibrés par jour et très peu de sucreries.","Maurice, lui, ne bouge pas assez. Il est paresseux : marcher, c’est trop fatigant ! Il prend toujours la voiture et l’ascenseur.","Maurice ne mange pas équilibré : il adore le fastfood et il mange trop de sucreries. Il n’a jamais d’énergie."],
+it:[D("1. Les gens qui sont en mauvaise santé","E","EIKC",0),D("2. Il y a beaucoup de choses que","D","DAJG",0),D("3. Sandra n’habite pas","B","BCHK",1),D("4. Sandra a beaucoup de copains qui ne","H","HBEI",1),D("5. Prendre les escaliers","J","JAKF",2),D("6. Sandra a","C","CFKI",2),D("7. Maurice","G","GIHE",3),D("8. Maurice ne mange pas","F","FKCA",4)]}
+];
+const clr=()=>document.querySelectorAll(".txt p").forEach(p=>p.classList.remove("hl","good"));
+function welcome(){
+ show(`<div class="card"><h1>Bienvenue, docteur ! 🩺</h1><p>Dans chaque niveau : <b>1. Leçon</b> (tu apprends) → <b>2. Exercices</b> → <b>3. Soumets ton travail à ton prof</b>. Le niveau suivant s’ouvre avec le code de ton prof.</p><input id="nm" placeholder="Ton prénom"><input id="cl" placeholder="Ta classe (ex. 9B)"><button class="pri" id="go">Entrer →</button></div>`);
+ $("#go").onclick=()=>{const n=$("#nm").value.replace(/[|#]/g,"").trim();if(!n){$("#nm").focus();return}S.name=n;S.cls=$("#cl").value.replace(/[|#]/g,"").trim();sv();menu()};
+}
+function menu(){
+ if(location.hash=="#prof")return prof();
+ if(!S.name&&!PV)return welcome();
+ show((PV?`<div class="card"><b>👁️ Mode aperçu prof</b> : tous les niveaux sont ouverts, les bonnes réponses sont entourées, rien n’est enregistré. <button id="xo">Quitter l’aperçu</button></div>`:"")+`<h2>Bonjour ${PV?"professeur":esc(S.name)} !</h2><p class="mu">Leçon → exercices → code pour ton prof → niveau suivant.</p>`+L.map((l,i)=>`<button class="card${LK(i)?" lock":""}" data-i="${i}" ${LK(i)?"disabled":""}>${l.ic} <b>Niveau ${i+1} · ${l.t}</b> ${S.sc[i]?"✅ "+S.sc[i]:LK(i)?"🔒":""}<br><span class="mu">${l.d}</span></button>`).join(""));
+ app.querySelectorAll("[data-i]").forEach(b=>b.onclick=()=>lesson(+b.dataset.i));
+ const xo=$("#xo");if(xo)xo.onclick=()=>{PV=false;try{sessionStorage.removeItem("pv")}catch(e){}menu()};
+}
+function lesson(i){
+ const l=L[i],c=l.c||l.p||[],seen=new Set(S.ls[i]?c.map((_,k)=>k):[]);
+ show(`<div class="card"><h2>${l.ic} Leçon ${i+1} · ${l.t}</h2><p>${l.r}</p></div>`+(c.length?`<p class="mu">👆 Touche chaque carte pour la retourner : <b id="n"></b></p><div class="cols">${c.map((x,k)=>`<button class="fc" data-k="${k}"><b>${x[0]}</b></button>`).join("")}</div>`:"")+(l.tx?`<div class="card txt">${l.tx.map(p=>`<p>${p}</p>`).join("")}</div>`:"")+`<p><button class="pri" id="go">Aller aux exercices →</button> <button id="m">Menu</button></p>`);
+ const upd=()=>{$("#go").disabled=!PV&&seen.size<c.length;const n=$("#n");if(n)n.textContent=seen.size+"/"+c.length};
+ app.querySelectorAll(".fc").forEach(b=>b.onclick=()=>{const k=+b.dataset.k,x=c[k],on=b.classList.toggle("on");b.innerHTML=on?x[1]:"<b>"+x[0]+"</b>";seen.add(k);upd()});
+ $("#go").onclick=()=>{if(!PV){S.ls[i]=1;sv()}play(i)};$("#m").onclick=menu;upd();
+}
+function play(i){cur={i,n:0,ok:0,pts:0,st:0,t:0};if(L[i].p)cur.P=sh(L[i].p).slice(0,12);L[i].p?pairs():ask()}
+function ask(){
+ const l=L[cur.i],t=l.it[cur.n];
+ if(!t)return fin(cur.ok,l.it.length);
+ cur.t=0;
+ show(`<div class="bar"><i style="width:${cur.n/l.it.length*100}%"></i></div><p class="mu">Question ${cur.n+1}/${l.it.length}${cur.st>1?" · 🔥 série de "+cur.st:""} · ${cur.pts} pts</p>`+(l.tx?`<div class="card txt">${l.tx.map((p,k)=>`<p id="p${k}">${p}</p>`).join("")}</div>`:"")+`<div class="card"><p><b>${t[0]}</b></p><div class="opts">${sh([t[1],...t[2]]).map(x=>`<button>${x}</button>`).join("")}</div><p id="fb"></p><div id="nx"></div></div>`);
+ if(PV)app.querySelectorAll(".opts button").forEach(b=>{if(b.textContent===t[1])b.style.outline="3px dashed var(--ok)"});
+ app.querySelectorAll(".opts button").forEach(b=>b.onclick=()=>{
+  if(b.textContent===t[1]){
+   const f=cur.t==0;cur.ok+=f?1:0;cur.st=f?cur.st+1:0;cur.pts+=f?(cur.st>2?15:10):5;
+   b.classList.add("ok");app.querySelectorAll(".opts button").forEach(x=>x.disabled=true);
+   $("#fb").textContent=f?"✅ Bravo !":"✅ Bien, tu as corrigé !";
+   if(t[4]!=null){clr();$("#p"+t[4]).classList.add("good")}
+   $("#nx").innerHTML='<button class="pri" id="go">Suivant →</button>';$("#go").onclick=()=>{cur.n++;ask()};
+  }else{
+   b.classList.add("bad");b.disabled=true;cur.t++;cur.st=0;
+   $("#fb").textContent="❌ "+(t[3]||"Réfléchis encore !");
+   if(t[4]!=null){clr();$("#p"+t[4]).classList.add("hl")}
+  }
+ });
+}
+function pairs(){
+ const P=cur.P;let sel=null,mi=0,dn=0;
+ const col=s=>sh(P.map((p,k)=>[p[s],k])).map(([t,k])=>`<button data-k="${k}" data-s="${s}">${t}</button>`).join("");
+ show(`<p class="mu">Touche un mot français, puis sa traduction.</p><div class="cols"><div class="opts">${col(0)}</div><div class="opts">${col(1)}</div></div><p id="fb"></p>`);
+ app.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{
+  if(!sel||sel.dataset.s==b.dataset.s){if(sel)sel.classList.remove("sel");sel=b;b.classList.add("sel");return}
+  if(sel.dataset.k==b.dataset.k){
+   [sel,b].forEach(x=>{x.classList.remove("sel");x.classList.add("ok");x.disabled=true});sel=null;
+   if(++dn==P.length){const s=Math.max(0,P.length-mi);cur.pts=s*10;fin(s,P.length)}
+  }else{
+   mi++;sel.classList.remove("sel");sel=null;b.classList.add("bad");setTimeout(()=>b.classList.remove("bad"),500);
+   $("#fb").textContent="❌ Essaie encore ("+mi+" erreur"+(mi>1?"s":"")+")";
+  }
+ });
+}
+function fin(ok,tot){
+ const i=cur.i;
+ if(PV){show(`<div class="card"><h2>👁️ Aperçu : ${ok}/${tot}</h2><p>En mode normal, l’élève verrait ici son code à envoyer au prof.</p><button class="pri" id="m">Menu</button></div>`);$("#m").onclick=menu;return}
+ if(ok/tot<.6){
+  show(`<div class="card"><h2>Pas encore 💪</h2><p>${ok}/${tot}. Il faut au moins 60 % pour soumettre ton travail. Relis la leçon, puis réessaie.</p><button class="pri" id="r">Réessayer</button> <button id="l">Revoir la leçon</button></div>`);
+  $("#r").onclick=()=>play(i);$("#l").onclick=()=>lesson(i);return;
+ }
+ const code=`${S.name}|${S.cls}|N${i+1}|${ok}/${tot}`,sub=code+"#"+H(code);
+ show(`<div class="card"><h2>🎉 Niveau ${i+1} terminé : ${ok}/${tot}</h2><p><b>Étape obligatoire :</b> envoie ce code à ton prof. Le niveau suivant reste verrouillé jusqu’à ce qu’il te donne son code.</p><textarea id="sb" rows="3" readonly>${esc(sub)}</textarea><p><button id="cp">📋 Copier</button> <a href="mailto:${TEACHER}?subject=${encodeURIComponent("Cabinet du Docteur – Niveau "+(i+1))}&body=${encodeURIComponent(sub)}">✉️ Envoyer par e-mail</a></p><p>Code du prof :</p><input id="uc" placeholder="CODE" autocapitalize="characters"><p id="fb"></p><button class="pri" id="ub">Débloquer</button> <button id="m">Menu</button></div>`);
+ $("#cp").onclick=()=>{$("#sb").select();try{document.execCommand("copy");$("#cp").textContent="✅ Copié"}catch(e){}};
+ $("#m").onclick=menu;
+ $("#ub").onclick=()=>{
+  if($("#uc").value.trim().toUpperCase()!==UNLOCK){$("#fb").textContent="❌ Code incorrect. Demande à ton prof.";return}
+  S.open=Math.max(S.open,i+1);S.sc[i]=ok+"/"+tot;S.xp+=cur.pts;sv();
+  i==L.length-1?diplome():menu();
+ };
+}
+function diplome(){
+ show(`<div class="card" style="text-align:center"><h1>🎓 Diplôme</h1><p>Le Dr <b>${esc(S.name)}</b> (${esc(S.cls)}) a réussi tous les niveaux !</p><h2>⭐ ${S.xp} XP</h2><p class="mu">Fais une capture d’écran pour ton prof.</p><button id="m">Menu</button></div>`);
+ $("#m").onclick=menu;
+}
+function prof(){
+ if(!PV){
+  show(`<div class="card"><h2>👩‍🏫 Espace prof</h2><p>Mot de passe prof :</p><input id="pw" type="password" autocomplete="off"><button class="pri" id="pk">Entrer</button><div id="po"></div></div>`);
+  $("#pk").onclick=async()=>{
+   const p=$("#pw").value;if(!p)return;let h;
+   try{h=await sha(p)}catch(e){$("#po").textContent="Ce navigateur ne peut pas vérifier le mot de passe (la page doit être en https).";return}
+   if(!TEACHER_HASH){$("#po").innerHTML=`<p>Aucun mot de passe prof n’est encore enregistré. Dans le fichier, remplace la ligne <code>const TEACHER_HASH="";</code> par :</p><textarea rows="3" readonly>const TEACHER_HASH="${h}";</textarea>`;return}
+   if(h===TEACHER_HASH){PV=true;try{sessionStorage.setItem("pv","1")}catch(e){}prof()}else $("#po").textContent="❌ Mot de passe incorrect."
+  };
+  return;
+ }
+ show(`<div class="card"><h2>👩‍🏫 Espace prof</h2><p>Code de déblocage à donner aux élèves : <b>${esc(UNLOCK)}</b></p><button class="pri" id="pm">👁️ Voir tous les niveaux (aperçu)</button> <button id="px">Se déconnecter</button></div><div class="card"><p>Vérifier le code d’un élève :</p><textarea id="pc" rows="3"></textarea><button id="pv">Vérifier</button><div id="po"></div></div>`);
+ $("#pm").onclick=()=>{history.replaceState(null,"",location.pathname+location.search);menu()};
+ $("#px").onclick=()=>{PV=false;try{sessionStorage.removeItem("pv")}catch(e){}prof()};
+ $("#pv").onclick=()=>{const s=$("#pc").value.trim(),k=s.lastIndexOf("#"),c=s.slice(0,k);
+  $("#po").innerHTML=k>0&&H(c)===s.slice(k+1)?`<p>✅ <b>${esc(c.split("|").join(" · "))}</b></p>`:"<p>❌ Code invalide ou modifié.</p>"};
+}
+window.onhashchange=menu;menu();
+</script>
+<style>
+.txt .s{cursor:pointer;border-radius:4px;padding:1px 2px}
+.txt .s:hover{background:var(--hl)}
+.txt .s.good{background:var(--okb)}
+.txt .s.bad{background:var(--badb)}
+</style>
+<script>
+(()=>{
+const E={A:"n’est pas aussi bon pour la santé que prendre les escaliers.",B:"près d’une salle de gym mais est très active tout de même.",C:"un bon régime alimentaire.",D:"vous ne devez pas faire si vous voulez être en forme.",E:"peuvent faire beaucoup de choses pour retrouver la forme.",F:"équilibré.",G:"ne bouge pas assez.",H:"vont pas au collège à pied.",I:"en très mauvaise santé.",J:"est mieux pour la santé que prendre l’ascenseur.",K:"mange sain."},fl=(a,b)=>[a,b];
+const mk=P=>{let k=0;return P.map(([sp,ss])=>`<p>${sp?`<b>${sp} :</b> `:""}${ss.map(t=>`<span class="s" data-s="${k++}">${t}</span> `).join("")}</p>`).join("")};
+const tx=P=>P.map(([sp,ss])=>(sp?`<b>${sp} :</b> `:"")+ss.join(" "));
+/* ===== TEXTE 1.4c (texte du manuel fourni par l’enseignante) : une phrase par élément ===== */
+const A=[["",["Êtes-vous en bonne forme ?","Vous n’êtes pas aussi sain que vous voulez l’être ?","Ne vous inquiétez pas !","Il y a beaucoup de choses que vous pouvez faire pour être en meilleure forme possible.","Notre guide vous montre ce que vous pouvez faire pour être en bonne forme comme Sandra et ce que vous ne devez pas faire si vous ne voulez pas être comme Maurice."]],
+["",["Sandra est en forme.","Voici les raisons…","Il n’y a pas de centre sportif près de chez elle mais Sandra fait beaucoup de sport.","Le tennis au parc, le jogging … elle fait une activité physique tous les jours.","Vous pouvez faire pareil."]],
+["",["Contrairement à tant de ses copains qui y vont en voiture ou en bus, Sandra va toujours au collège à pied ou à vélo, ce qui est meilleur pour la forme et pour l’environnement."]],
+["",["Au lieu de prendre l’ascenseur ou bien l’escalier roulant, Sandra prend toujours les escaliers, une façon idéale de faire de l’exercice.","Bouger, c’est très important pour rester en forme."]],
+["",["Pour être en aussi bonne forme que Sandra, on doit manger sain aussi.","Sandra mange trois repas équilibrés par jour et ne mange pas de sucreries.","C’est pour ça qu’elle a autant d’énergie."]],
+["",["Contrairement à Sandra, Maurice n’est pas en forme et il y a beaucoup de raisons…","Maurice ne fait pas assez de sport.","Il n’aime pas du tout ça et, extrêmement paresseux, il fait très peu d’exercice."]],
+["",["Son collège se trouve tout près de chez lui mais Maurice n’y va pas à pied.","Il préfère y aller en voiture.","Marcher, c’est trop fatigant et il n’aime pas ça.","Il n’a simplement pas assez d’énergie."]],
+["",["Maurice a horreur des escaliers aussi et prend toujours l’ascenseur ou bien l’escalier roulant quand il va au centre commercial."]],
+["",["Au lieu de manger trois repas équilibrés par jour, Maurice adore le fastfood.","Et il en mange trop !","En plus, il mange beaucoup de sucreries entre les repas."]]];
+const M=(q,ev,a,o)=>({q:q+" …",ev:[ev],a:[E[a]],o:o.split("").filter(k=>k!=a).map(k=>E[k])});
+const QA=[M("1. Les gens qui sont en mauvaise santé",3,"E","EIKC"),M("2. Il y a beaucoup de choses que",4,"D","DAJG"),M("3. Sandra n’habite pas",7,"B","BCHK"),M("4. Sandra a beaucoup de copains qui ne",10,"H","HBEI"),M("5. Prendre les escaliers",11,"J","JAKF"),M("6. Sandra a",14,"C","CFKI"),M("7. Maurice",17,"G","GIHE"),M("8. Maurice ne mange pas",24,"F","FKCA")];
+const VA=[["n’est pas aussi bon pour = ?","is not as good for",["is better than","is not good enough","is as good as"],"aussi … que = as … as"],
+["une sucrerie = ?","a sweet (sugary treat)",["a vegetable","a drink","a diet"],"Pense à « sucre »."],
+["Contrairement à = ?","unlike",["because of","instead of","as well as"],"Sandra et Maurice sont opposés."],
+["au lieu de = ?","instead of",["because of","next to","in front of"],"Au lieu de prendre l’ascenseur…"],
+["tant de copains = ?","so many friends",["too many friends","very few friends","no friends"],"tant de = so much / so many"],
+["l’escalier roulant = ?","the escalator",["the lift","the stairs","the shopping centre"],"On le prend au centre commercial."],
+["avoir horreur de = ?","to hate",["to love","to need","to climb"],"Maurice a horreur des escaliers."],
+["prendre → nous ___","prenons",["prends","prennent","prenez"],"nous → -ons"],
+["prendre → ils ___ l’ascenseur.","prennent",["prenons","prend","prenez"],"ils → prennent"],
+["manger → nous ___ trois repas.","mangeons",["mangons","mangez","mangent"],"manger garde le e devant -ons"],
+["pouvoir → vous ___ faire pareil.","pouvez",["pouvons","peuvent","pouvent"],"vous → -ez"],
+["faire → vous ___ du sport.","faites",["faisez","faisons","font"],"faire est irrégulier : vous faites"]];
+/* ===== TEXTE 1.4d : version provisoire (à remplacer par le texte du manuel) ===== */
+const B=[["PS",["Thomas, qu’est-ce que vous faites pour rester en forme ?"]],
+["TP",["Je participe à des triathlons, donc je dois toujours être en très bonne forme.","Pour moi, un bon régime alimentaire est la chose la plus importante.","Si on ne mange pas sain, on n’a pas d’énergie pour s’entraîner."]],
+["PS",["Qu’est-ce que c’est, une alimentation saine ?"]],
+["TP",["Il faut manger des aliments de tous les groupes alimentaires.","Et il faut boire beaucoup d’eau."]],
+["PS",["À part l’alimentation et le sport, qu’est-ce qui compte pour vous ?"]],
+["TP",["Je dors toujours huit heures par nuit, c’est essentiel pour la santé.","Beaucoup de sportifs ne sont pas en excellente santé parce qu’ils boivent souvent des boissons sucrées."]],
+["PS",["Parlez-nous de votre routine."]],
+["TP",["Le matin, je prends un bon petit déjeuner, puis je fais de la natation.","Le week-end, je fais du cyclisme et de la course à pied.","À midi, je ne cours pas dehors parce qu’il fait trop chaud.","Je cours plutôt sur un tapis roulant dans la salle de gym."]],
+["PS",["Et pour vous détendre ?"]],
+["TP",["Le soir, je regarde un peu la télé, je lis un livre et j’écoute de la musique.","Je ne sors jamais très tard."]]];
+const R=(q,ev,a,o)=>({q,ev,a,o});
+const QB=[R("1. Pourquoi Thomas doit-il rester en forme ?",[1],["Il participe à des triathlons."],["Il est médecin.","Il déteste le sport.","Il habite près d’une piscine."]),
+R("2. Quelle est la conséquence de ne pas manger sain, selon Thomas ?",[3],["On n’a pas d’énergie."],["On dort mal.","On a trop chaud.","On devient grand."]),
+R("3. Qu’est-ce que c’est, une alimentation saine, selon Thomas ?",[5,6],["Manger des aliments de tous les groupes","Boire beaucoup d’eau"],["Manger seulement des légumes","Boire des boissons sucrées"]),
+R("4. À part le régime et le sport, qu’est-ce qui est important ?",[8],["Dormir huit heures par nuit"],["Regarder la télé","Courir à midi","Manger du fastfood"]),
+R("5. Pourquoi certains sportifs ne sont-ils pas en excellente santé ?",[9],["Ils boivent souvent des boissons sucrées."],["Ils dorment trop.","Ils font trop de natation.","Ils mangent des légumes."]),
+R("6. Quels sports Thomas fait-il pour s’entraîner ?",[11,12],["la natation","le cyclisme","la course à pied"],["le tennis","le football"]),
+R("7. Pourquoi ne court-il pas dehors à midi ?",[13],["Il fait trop chaud."],["Il n’aime pas courir.","Il a faim.","La piscine est fermée."]),
+R("8. Que fait-il pour se détendre ?",[16],["Il regarde la télé.","Il lit un livre.","Il écoute de la musique."],["Il joue au tennis.","Il fait du jogging."])];
+const VB=[["s’entraîner = ?","to train",["to relax","to wake up","to swim"],"Un triathlète s’entraîne."],
+["une boisson sucrée = ?","a sugary drink",["a healthy meal","a sports bag","a glass of water"],"sucré = sweet / sugary"],
+["un tapis roulant = ?","a treadmill",["a carpet","a running track","a swimming pool"],"On y court dans la salle de gym."],
+["se détendre = ?","to relax",["to train","to get up","to eat"],"Le soir, il se détend."],
+["la natation = ?","swimming",["running","cycling","tennis"],"nager = to swim"],
+["dormir → je ___ huit heures.","dors",["dort","dormons","dorme"],"je dors · tu dors · il dort"],
+["boire → ils ___ de l’eau.","boivent",["buvent","boit","boient"],"ils boivent"],
+["lire → nous ___ un livre.","lisons",["lisent","lit","lissons"],"nous lisons"],
+["courir → vous ___ vite.","courez",["courons","courent","courrez"],"vous courez"],
+["prendre → je ___ un petit déjeuner.","prends",["prend","prenons","prennent"],"je prends"]];
+/* ===== FORUM « Monsieur le médecin » (texte du manuel fourni par l’enseignante) ===== */
+const F=[["Sonia_006",["Monsieur, pouvez-vous m’aider ?","J’ai mal au genou, j’ai toujours sommeil et j’ai constamment faim.","Pourquoi ne suis-je pas bien ?"]],
+["M_Med",["Dites-moi, Sonia, depuis quand avez-vous mal au genou ?"]],
+["Sonia_006",["Depuis deux semaines maintenant et ça m’énerve.","Je suis très sportive.","Comment est-ce que je peux faire du sport quand mon genou me fait mal ?"]],
+["M_Med",["Quand faites-vous du sport ?"]],
+["Sonia_006",["Tous les jours, normalement."]],
+["M_Med",["Voilà le problème – vous devez simplement vous reposer un peu.","Faire du sport, c’est bien mais on ne doit pas en faire trop !"]],
+["Christian_200",["Monsieur, je suis malade depuis le début de l’été, alors une semaine !","J’ai mal à la tête et à l’estomac.","En plus, j’ai toujours soif et je n’ai jamais d’énergie."]],
+["M_Med",["Dites-moi Christian, combien de verres d’eau buvez-vous par jour ?"]],
+["Christian_200",["Un verre.","Je bois rarement de l’eau.","Je préfère le café."]],
+["M_Med",["C’est clair.","Vous ne buvez pas assez d’eau.","Être bien hydraté, c’est important, surtout en été quand il fait chaud."]],
+["Jérémy B",["Docteur, j’ai mal partout – à la tête, aux jambes…","En plus, je tousse et j’ai de la fièvre – un moment j’ai chaud, un autre, j’ai froid.","Je n’ai pas faim depuis deux jours et j’ai envie de vomir."]],
+["M_Med",["Jérémy, vous avez la grippe.","Je vous conseille de rester au lit et surtout de boire beaucoup d’eau."]]];
+const QF=[R("1. Quels sont les symptômes de Sonia ?",[1],["Elle a mal au genou.","Elle a sommeil.","Elle a faim."],["Elle a mal à la tête.","Elle a de la fièvre."]),
+R("2. Pourquoi Sonia est-elle frustrée ?",[5,6],["Elle est très sportive mais elle a mal au genou."],["Elle n’aime pas le sport.","Elle a de la fièvre.","Elle boit trop de café."]),
+R("3. Que conseille le médecin à Sonia ?",[9,10],["Se reposer un peu","Ne pas faire trop de sport"],["Faire du sport tous les jours","Boire du café"]),
+R("4. Que peut faire Christian pour se sentir mieux ?",[19],["Boire plus d’eau."],["Boire plus de café.","Faire plus de sport.","Rester au lit."]),
+R("5. Pourquoi ne peut-il pas boire uniquement du café ?",[20],["Il doit être bien hydraté."],["Le café est trop cher.","Il n’aime pas le café.","Il a de la fièvre."]),
+R("6. Pourquoi est-il malade depuis une semaine ?",[16],["Il ne boit pas assez d’eau."],["Il a la grippe.","Il fait trop de sport.","Il dort trop."]),
+R("7. Depuis combien de jours Jérémy ne veut-il pas manger ?",[23],["Depuis deux jours."],["Depuis une semaine.","Depuis trois jours.","Depuis deux semaines."]),
+R("8. Pourquoi doit-il se reposer ?",[24],["Il a la grippe."],["Il a mal au genou.","Il ne boit pas assez d’eau.","Il fait trop de sport."])];
+const VF=[["frustrée = ?","frustrated",["tired","lucky","healthy"],"Sonia dit : « ça m’énerve »."],
+["Le masculin de « frustrée » = ?","frustré",["frustrée","frustrés","frustrer"],"Au masculin, on enlève le e final."],
+["Le féminin pluriel de « frustré » = ?","frustrées",["frustrés","frustrée","frustrant"],"féminin + pluriel : e + s"],
+["Le masculin pluriel de « frustré » = ?","frustrés",["frustrées","frustré","frustrants"],"masculin + pluriel : on ajoute s"],
+["Le masculin de « sportive » = ?","sportif",["sportive","sportifs","sportiv"],"Sonia dit : « Je suis très sportive »."],
+["Le féminin de « malade » = ?","malade",["maladée","maladite","malades"],"Certains adjectifs ne changent pas au féminin."],
+["Le féminin de « hydraté » = ?","hydratée",["hydraté","hydratés","hydratte"],"Au féminin, on ajoute e."],
+["le médecin = ?","the doctor",["the nurse","the chemist","the patient"],"M_Med = Monsieur le médecin."],
+["Le féminin de « le médecin » = ?","la médecin",["la médecine","la médecinne","la médecinière"],"Le nom ne change pas : seul l’article change."],
+["medicines = ?","les médicaments",["les médecins","les maladies","les symptômes"],"Un ___ : un médicament, des ___."],
+["Le pluriel de « le genou » = ?","les genoux",["les genous","les genoues","les genou"],"Pluriel irrégulier : -x, comme « les bijoux »."],
+["uniquement = ?","only",["often","never","enough"],"Synonyme : seulement."],
+["malade = ?","ill / sick",["tired","hungry","hot"],"Christian est ___ depuis une semaine."],
+["la grippe = ?","the flu",["a cough","a headache","a diet"],"Jérémy : « Vous avez la grippe »."],
+["la fièvre = ?","fever",["cough","hunger","energy"],"Un moment j’ai chaud, un autre j’ai froid."],
+["tousser = ?","to cough",["to vomit","to sneeze","to rest"],"Jérémy dit : « Je tousse »."],
+["se reposer = ?","to rest",["to run","to cough","to train"],"Le médecin dit à Sonia : « vous devez vous reposer »."],
+["constamment = ?","constantly",["rarely","never","sometimes"],"Ça ressemble à l’anglais."],
+["Le contraire de « rarement » = ?","souvent",["jamais","parfois","peu"],"Christian boit rarement de l’eau."],
+["Le contraire de « avoir chaud » = ?","avoir froid",["avoir faim","avoir soif","avoir sommeil"],"Jérémy : un moment j’ai chaud, un autre…"],
+["ça m’énerve = ?","it annoys me",["it hurts me","it helps me","it tires me"],"Sonia est frustrée."],
+["« J’ai mal partout » veut dire… ?","my whole body hurts",["I have a headache","I am nowhere","I hurt a little"],"partout = tous les endroits."],
+["« J’ai envie de vomir » = ?","I feel like being sick",["I want to eat","I am sleepy","I am thirsty"],"Jérémy a la grippe."],
+["conseiller = ?","to advise",["to ask","to forbid","to help"],"Le médecin dit : « Je vous conseille de rester au lit »."],
+["un verre d’eau = ?","a glass of water",["a bottle of water","a cup of coffee","a jug of water"],"Christian boit un verre par jour."]];
+L.pop();
+L.push({ic:"🕵️",t:"Le dossier Sandra & Maurice",d:"Enquête dans le texte + vocabulaire (1.4c)",
+r:"Lis le dossier avec attention. Ensuite, pour chaque début de phrase : <b>① touche la phrase du texte qui donne la réponse</b>, puis <b>② choisis la bonne fin</b>. Attention, il y a des fins en trop ! À la fin : un test de vocabulaire et de conjugaison.",c:[],tx:tx(A),rd:QA,h:mk(A),it:VA},
+{ic:"🏊",t:"Interview d’un triathlète",d:"Preuves dans le texte + vocabulaire (1.4d)",
+r:"Avant de lire l’interview, apprends ces verbes irréguliers et ces adverbes de fréquence. Retourne toutes les cartes. Ensuite, pour chaque question : <b>① touche la ou les phrases</b> qui donnent la réponse, puis <b>② choisis la ou les bonnes réponses</b>. À la fin : un test de vocabulaire et de conjugaison.",
+c:[fl("😴 dormir","je dors · tu dors · il dort<br>nous dormons · vous dormez · ils dorment"),fl("🥤 boire","je bois · tu bois · il boit<br>nous buvons · vous buvez · ils boivent"),fl("📖 lire","je lis · tu lis · il lit<br>nous lisons · vous lisez · ils lisent"),fl("🏃 courir","je cours · tu cours · il court<br>nous courons · vous courez · ils courent"),fl("🥐 prendre","je prends · tu prends · il prend<br>nous prenons · vous prenez · ils prennent"),fl("🔁 toujours · souvent","always · often<br><i>Je dors toujours huit heures.</i>"),fl("🌓 quelquefois · rarement","sometimes · rarely<br><i>Je mange rarement du fastfood.</i>"),fl("🚫 ne … jamais","never<br><i>Je ne sors jamais tard.</i>")],
+tx:tx(B),rd:QB,h:mk(B),it:VB});
+L.unshift({ic:"👨‍⚕️",t:"Monsieur le médecin",d:"Vocabulaire, puis compréhension du forum santé",
+r:"Un forum santé : des patients écrivent au médecin. <b>1. Lis</b> le forum. <b>2. Vocabulaire</b> : réponds <b>sans aide</b> ; si tu te trompes, tu reçois un <b>indice</b> et un deuxième essai ; si tu te trompes encore, on te montre <b>la réponse</b>. <b>3. Questions</b> : <b>① touche la ou les phrases</b> du forum qui donnent la réponse, puis <b>② choisis la ou les bonnes réponses</b>.",
+c:[],nl:1,
+tx:null,rt:tx(F),rd:QF,h:mk(F),it:VF,vf:1});
+const ol=lesson;
+lesson=i=>{const l=L[i];if(!l.nl)return ol(i);show(`<div class="card"><h2>${l.ic} Niveau ${i+1} · ${l.t}</h2><p>${l.r}</p><button class="pri" id="go">Commencer →</button> <button id="m">Menu</button></div>`);$("#go").onclick=()=>play(i);$("#m").onclick=menu};
+function vq(){
+ const l=L[cur.i],t=l.it[cur.n];
+ if(!t)return fin(cur.ok,l.it.length);
+ let tr=0;
+ show(`<div class="bar"><i style="width:${cur.n/l.it.length*100}%"></i></div><p class="mu">Vocabulaire ${cur.n+1}/${l.it.length}${cur.st>1?" · 🔥 série de "+cur.st:""} · ${cur.pts} pts</p><div class="card"><p><b>${t[0]}</b></p><p id="hn"></p><div class="opts">${sh([t[1],...t[2]]).map(x=>`<button>${x}</button>`).join("")}</div><p id="fb"></p><div id="nx"></div></div>`);
+ const bs=[...app.querySelectorAll(".opts button")];
+ if(PV)bs.forEach(b=>{if(b.textContent===t[1])b.style.outline="3px dashed var(--ok)"});
+ const nxt=()=>{$("#nx").innerHTML='<button class="pri" id="go">Suivant →</button>';$("#go").onclick=()=>{cur.n++;vq()}};
+ bs.forEach(b=>b.onclick=()=>{
+  if(b.textContent===t[1]){
+   b.classList.add("ok");bs.forEach(x=>x.disabled=true);
+   if(tr==0){cur.ok++;cur.st++;cur.pts+=cur.st>2?15:10;$("#fb").textContent="✅ Bravo, sans indice !"}
+   else{cur.st=0;cur.pts+=5;$("#fb").textContent="✅ Bien, avec l’indice !"}
+   nxt();
+  }else{
+   b.classList.add("bad");b.disabled=true;cur.st=0;tr++;
+   if(tr==1){$("#hn").textContent="💡 Indice : "+t[3];$("#fb").textContent="❌ Pas tout à fait. Essaie encore !"}
+   else{bs.forEach(x=>{x.disabled=true;if(x.textContent===t[1])x.classList.add("ok")});$("#fb").textContent="📖 La réponse : "+t[1];nxt()}
+  }
+ });
+}
+const op=play,of=fin;
+play=i=>L[i].rd?reader(i):op(i);
+fin=(ok,tot)=>{const l=L[cur.i];if(l.tx0){l.tx=l.tx0;delete l.tx0}if(cur.vf){cur.vf=0;cur.nx();return}of(ok,tot+(cur.rq||0)+(cur.vn||0))};
+function reader(i){
+ const l=L[i],Q=l.rd;cur={i,n:0,ok:0,pts:0,st:0};
+ const next=()=>{
+  const n=cur.n,q=Q[n];
+  if(!q){
+   if(l.vf)return fin(cur.ok,Q.length);
+   show(`<div class="card"><h2>📚 Test de vocabulaire</h2><p>Dernière étape : le vocabulaire et les verbes du texte.</p><button class="pri" id="go">C’est parti →</button></div>`);
+   $("#go").onclick=()=>{l.tx0=l.tx;l.tx=null;cur.n=0;cur.rq=Q.length;ask()};return;
+  }
+  const need=q.ev.length,A=q.a,found=new Set(),got=new Set();let err=0;
+  show(`<div class="bar"><i style="width:${n/Q.length*100}%"></i></div><p class="mu">Question ${n+1}/${Q.length}${cur.st>1?" · 🔥 série de "+cur.st:""} · ${cur.pts} pts</p><div class="card"><p><b>${q.q}</b>${A.length>1?` <span class="mu">[${A.length}]</span>`:""}</p><p id="st">① Touche ${need>1?"les "+need+" phrases":"la phrase"} du texte qui ${need>1?"donnent":"donne"} la réponse.</p></div><div class="card txt">${l.h}</div><div class="card" id="ans" hidden><p>② Choisis ${A.length>1?"les "+A.length+" bonnes réponses":"la bonne réponse"} :</p><div class="opts">${sh([...A,...q.o]).map(x=>`<button>${x}</button>`).join("")}</div></div><p id="fb"></p><div id="nx"></div>`);
+  if(PV){q.ev.forEach(k=>{app.querySelector('.s[data-s="'+k+'"]').style.outline="2px dashed var(--ok)"});$("#ans").hidden=false;app.querySelectorAll("#ans .opts button").forEach(b=>{if(A.includes(b.textContent))b.style.outline="3px dashed var(--ok)"})}
+  app.querySelectorAll(".s").forEach(s=>s.onclick=()=>{
+   if(found.size>=need||s.classList.contains("good"))return;
+   const k=+s.dataset.s;
+   if(q.ev.includes(k)){
+    s.classList.add("good");found.add(k);
+    if(found.size==need){$("#st").textContent="✅ Bien vu ! Maintenant, la réponse.";$("#ans").hidden=false}
+    else $("#st").textContent="✅ Une phrase trouvée ("+found.size+"/"+need+"). Cherche l’autre !";
+   }else{
+    s.classList.add("bad");setTimeout(()=>s.classList.remove("bad"),600);err++;cur.st=0;
+    $("#st").textContent="❌ Ce n’est pas là. Relis le texte !";
+   }
+  });
+  app.querySelectorAll("#ans .opts button").forEach(b=>b.onclick=()=>{
+   if(A.includes(b.textContent)){
+    b.classList.add("ok");b.disabled=true;got.add(b.textContent);
+    if(got.size==A.length){
+     const f=err==0;cur.ok+=f?1:0;cur.st=f?cur.st+1:0;cur.pts+=f?(cur.st>2?15:10):5;
+     app.querySelectorAll("#ans .opts button").forEach(x=>x.disabled=true);
+     $("#fb").textContent=f?"✅ Bravo !":"✅ Bien, tu as corrigé !";
+     $("#nx").innerHTML='<button class="pri" id="go">Suivant →</button>';$("#go").onclick=()=>{cur.n++;next()};
+    }else $("#fb").textContent="✅ Une bonne réponse, il en reste "+(A.length-got.size)+" !";
+   }else{
+    b.classList.add("bad");b.disabled=true;err++;cur.st=0;$("#fb").textContent="❌ Pas tout à fait. Relis les phrases vertes !";
+   }
+  });
+ };
+ if(l.vf){
+  cur.vf=1;cur.nx=()=>{cur.vn=l.it.length;cur.n=0;next()};
+  show(`<div class="card"><h2>📖 D’abord, lis le forum</h2><p class="mu">Lis attentivement le texte. Ensuite : le vocabulaire, puis les questions.</p></div><div class="card txt">${l.rt.map(p=>`<p>${p}</p>`).join("")}</div><button class="pri" id="go">J’ai lu le texte → vocabulaire</button>`);
+  $("#go").onclick=()=>{cur.n=0;vq()};
+ }else next();
+}
+menu();
+})();
+</script>
+</body></html>
